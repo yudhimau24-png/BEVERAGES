@@ -5,6 +5,7 @@ import random
 import re
 import urllib.parse
 import urllib.request
+from dotenv import load_dotenv
 import pandas as pd
 from pydantic import BaseModel, Field
 import streamlit as st
@@ -24,6 +25,9 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches, Pt
+
+# Muat variabel dari file .env secara otomatis
+load_dotenv()
 
 
 # ==========================================
@@ -65,7 +69,9 @@ def download_image_bytes(url: str) -> io.BytesIO | None:
     if not url or not url.startswith("http"):
         return None
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0"}
+        )
         with urllib.request.urlopen(req, timeout=4) as response:
             return io.BytesIO(response.read())
     except Exception:
@@ -79,7 +85,9 @@ class CompetitorItem(BaseModel):
     product_name: str = Field(description="Nama produk pembanding setara")
     origin_brand: str = Field(description="Asal negara atau brand produsen")
     origin_type: str = Field(
-        description="Klasifikasi: 'Lokal / Indonesia' atau 'Luar Negeri / Impor'"
+        description=(
+            "Klasifikasi: 'Lokal / Indonesia' atau 'Luar Negeri / Impor'"
+        )
     )
     alcohol_by_volume: str = Field(
         description="Kadar alkohol (% ABV, contoh: '16.9%', '40%')"
@@ -95,7 +103,10 @@ class CompetitorItem(BaseModel):
         description="Kelemahan/kekurangan produk pembanding"
     )
     behind_story: str = Field(
-        description="Cerita singkat di balik sejarah, filosofi, atau pembuatan produk pembanding"
+        description=(
+            "Cerita singkat di balik sejarah, filosofi, atau pembuatan produk"
+            " pembanding"
+        )
     )
 
 
@@ -112,14 +123,19 @@ class BeverageItem(BaseModel):
     beverage_name: str = Field(description="Nama lengkap minuman")
     beverage_category: str = Field(description="Kategori spesifik")
     origin_type: str = Field(
-        description="Klasifikasi: 'Lokal / Indonesia' atau 'Luar Negeri / Impor'"
+        description=(
+            "Klasifikasi: 'Lokal / Indonesia' atau 'Luar Negeri / Impor'"
+        )
     )
     alcohol_by_volume: str = Field(
         description="Kadar alkohol (% ABV, contoh: '16.9%', '40%')"
     )
     unique_selling_point: str = Field(description="Unique Selling Point (USP)")
     behind_story: str = Field(
-        description="Cerita singkat di balik asal-usul, sejarah, atau filosofi racikan produk (Short Behind Story)"
+        description=(
+            "Cerita singkat di balik asal-usul, sejarah, atau filosofi racikan"
+            " produk (Short Behind Story)"
+        )
     )
     product_weakness: str = Field(
         description="Kelemahan/kekurangan produk utama"
@@ -296,7 +312,15 @@ def create_excel_dashboard(data_json: dict) -> io.BytesIO:
 
         comp_str = "\n".join(
             [
-                f"• {c.get('product_name')} ({c.get('origin_type')} - {c.get('origin_brand')}) | ABV: {c.get('alcohol_by_volume')} | Story: {c.get('behind_story')} | Kelemahan: {c.get('product_weakness')} | Bahan: {c.get('base_ingredients')} | Harga: {c.get('price_point')}"
+                (
+                    f"• {c.get('product_name')} ({c.get('origin_type')} -"
+                    f" {c.get('origin_brand')}) | ABV:"
+                    f" {c.get('alcohol_by_volume')} | Story:"
+                    f" {c.get('behind_story')} | Kelemahan:"
+                    f" {c.get('product_weakness')} | Bahan:"
+                    f" {c.get('base_ingredients')} | Harga:"
+                    f" {c.get('price_point')}"
+                )
                 for c in comps
             ]
         )
@@ -343,7 +367,9 @@ def create_excel_dashboard(data_json: dict) -> io.BytesIO:
                 val_str = str(cell.value or "")
                 if len(val_str) > max_len:
                     max_len = len(val_str)
-        ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 35)
+        ws.column_dimensions[col_letter].width = min(
+            max(max_len + 3, 12), 35
+        )
 
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -360,104 +386,126 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
     prs.slide_height = Inches(7.5)
     blank_layout = prs.slide_layouts[6]
 
-    # PALET TEMA WARNA DINAMIS (Diacak Setiap Kali Download)
     THEME_PALETTES = [
         {
             "name": "Luxury Dark Gold",
-            "card_bg": RGBColor(15, 23, 42),       # Dark Slate
-            "border": RGBColor(234, 179, 8),       # Amber Gold Accent
-            "primary": RGBColor(250, 204, 21),     # Bright Gold Title
-            "accent": RGBColor(168, 85, 247),      # Purple Soft
-            "text": RGBColor(241, 245, 249),       # Off White
-            "subtext": RGBColor(203, 213, 225),    # Muted Gray
-            "card_header": RGBColor(30, 41, 59)
+            "card_bg": RGBColor(15, 23, 42),
+            "border": RGBColor(234, 179, 8),
+            "primary": RGBColor(250, 204, 21),
+            "accent": RGBColor(168, 85, 247),
+            "text": RGBColor(241, 245, 249),
+            "subtext": RGBColor(203, 213, 225),
+            "card_header": RGBColor(30, 41, 59),
         },
         {
             "name": "Royal Emerald Sommelier",
-            "card_bg": RGBColor(6, 44, 34),        # Deep Emerald
-            "border": RGBColor(16, 185, 129),      # Emerald Green Accent
-            "primary": RGBColor(110, 231, 183),    # Mint Gold Title
-            "accent": RGBColor(253, 224, 71),      # Soft Gold
+            "card_bg": RGBColor(6, 44, 34),
+            "border": RGBColor(16, 185, 129),
+            "primary": RGBColor(110, 231, 183),
+            "accent": RGBColor(253, 224, 71),
             "text": RGBColor(240, 253, 244),
             "subtext": RGBColor(187, 247, 208),
-            "card_header": RGBColor(4, 120, 87)
+            "card_header": RGBColor(4, 120, 87),
         },
         {
             "name": "Midnight Wine Crimson",
-            "card_bg": RGBColor(45, 10, 24),       # Deep Burgundy
-            "border": RGBColor(244, 63, 94),       # Crimson Rose Accent
-            "primary": RGBColor(251, 146, 60),     # Coral Gold Title
-            "accent": RGBColor(253, 186, 116),     # Warm Amber
+            "card_bg": RGBColor(45, 10, 24),
+            "border": RGBColor(244, 63, 94),
+            "primary": RGBColor(251, 146, 60),
+            "accent": RGBColor(253, 186, 116),
             "text": RGBColor(255, 241, 242),
             "subtext": RGBColor(254, 205, 211),
-            "card_header": RGBColor(136, 19, 55)
+            "card_header": RGBColor(136, 19, 55),
         },
         {
             "name": "Cyber Obsidian Cyan",
-            "card_bg": RGBColor(18, 24, 38),       # Dark Obsidian
-            "border": RGBColor(14, 165, 233),      # Cyan Neon Accent
-            "primary": RGBColor(56, 189, 248),     # Electric Sky Blue Title
-            "accent": RGBColor(129, 140, 248),     # Indigo Light
+            "card_bg": RGBColor(18, 24, 38),
+            "border": RGBColor(14, 165, 233),
+            "primary": RGBColor(56, 189, 248),
+            "accent": RGBColor(129, 140, 248),
             "text": RGBColor(240, 249, 255),
             "subtext": RGBColor(186, 230, 253),
-            "card_header": RGBColor(3, 105, 161)
-        }
+            "card_header": RGBColor(3, 105, 161),
+        },
     ]
 
-    # POOL GAMBAR UNTUK LATAR BELAKANG DINAMIS
     COVER_BG_POOL = [
-        "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1600&q=80",
-        "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&q=80",
-        "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&q=80"
+        (
+            "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1600&q=80"
+        ),
+        (
+            "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1600&q=80"
+        ),
+        (
+            "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=1600&q=80"
+        ),
     ]
     PRODUCT_BG_POOL = [
-        "https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=1600&q=80",
-        "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?w=1600&q=80",
-        "https://images.unsplash.com/photo-1574096079513-d8259312b785?w=1600&q=80",
-        "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=1600&q=80"
+        (
+            "https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=1600&q=80"
+        ),
+        (
+            "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?w=1600&q=80"
+        ),
+        (
+            "https://images.unsplash.com/photo-1574096079513-d8259312b785?w=1600&q=80"
+        ),
+        (
+            "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=1600&q=80"
+        ),
     ]
 
-    # PILIH TEMA SECARA ACAK PADA SETIAP KALI GENERATE
     theme = random.choice(THEME_PALETTES)
     cover_bg_url = random.choice(COVER_BG_POOL)
 
     def set_slide_bg(slide, image_url: str):
         img_bytes = download_image_bytes(image_url)
         if img_bytes:
-            slide.shapes.add_picture(img_bytes, 0, 0, Inches(13.333), Inches(7.5))
+            slide.shapes.add_picture(
+                img_bytes, 0, 0, Inches(13.333), Inches(7.5)
+            )
         else:
-            bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5))
+            bg = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(7.5)
+            )
             bg.fill.solid()
             bg.fill.fore_color.rgb = theme["card_bg"]
             bg.line.fill.background()
 
     def add_modern_header(slide, title_text: str):
-        # Banner Atas Sleek dengan Dual Border Accent Line
-        banner = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(1.1))
+        banner = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(1.1)
+        )
         banner.fill.solid()
         banner.fill.fore_color.rgb = theme["card_header"]
         banner.line.color.rgb = theme["border"]
 
-        accent_line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, Inches(1.05), Inches(13.333), Inches(0.05))
+        accent_line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, 0, Inches(1.05), Inches(13.333), Inches(0.05)
+        )
         accent_line.fill.solid()
         accent_line.fill.fore_color.rgb = theme["border"]
         accent_line.line.fill.background()
 
-        tb = slide.shapes.add_textbox(Inches(0.8), Inches(0.18), Inches(11.5), Inches(0.7))
+        tb = slide.shapes.add_textbox(
+            Inches(0.8), Inches(0.18), Inches(11.5), Inches(0.7)
+        )
         p = tb.text_frame.paragraphs[0]
         p.text = title_text
         p.font.size = Pt(22)
         p.font.bold = True
         p.font.color.rgb = theme["primary"]
 
-    # ------------------------------------------
-    # SLIDE 1: COVER SLIDE
-    # ------------------------------------------
+    # SLIDE 1: COVER
     slide1 = prs.slides.add_slide(blank_layout)
     set_slide_bg(slide1, cover_bg_url)
 
     overlay1 = slide1.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.5), Inches(11.333), Inches(4.5)
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        Inches(1.0),
+        Inches(1.5),
+        Inches(11.333),
+        Inches(4.5),
     )
     overlay1.fill.solid()
     overlay1.fill.fore_color.rgb = theme["card_bg"]
@@ -481,20 +529,25 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
     p2.alignment = PP_ALIGN.CENTER
 
     p3 = tf_c.add_paragraph()
-    p3.text = f"• Theme Edition: {theme['name']}  • AI Analytics  • HORECA Commercial Strategy"
+    p3.text = (
+        f"• Theme Edition: {theme['name']}  • AI Analytics  • HORECA Commercial"
+        " Strategy"
+    )
     p3.font.size = Pt(13)
     p3.font.color.rgb = theme["accent"]
     p3.alignment = PP_ALIGN.CENTER
 
-    # ------------------------------------------
     # SLIDE 2: EXECUTIVE SUMMARY
-    # ------------------------------------------
     slide2 = prs.slides.add_slide(blank_layout)
     set_slide_bg(slide2, cover_bg_url)
     add_modern_header(slide2, "📋 Executive Strategy Summary")
 
     card_sum = slide2.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.5), Inches(11.733), Inches(5.3)
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        Inches(0.8),
+        Inches(1.5),
+        Inches(11.733),
+        Inches(5.3),
     )
     card_sum.fill.solid()
     card_sum.fill.fore_color.rgb = theme["card_bg"]
@@ -514,41 +567,54 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
     ps2.font.size = Pt(14)
     ps2.font.color.rgb = theme["text"]
 
-    # ------------------------------------------
     # SLIDES PER PRODUK
-    # ------------------------------------------
     beverages = data_json.get("selected_beverages", [])
     for idx, item in enumerate(beverages, 1):
         product_bg_url = random.choice(PRODUCT_BG_POOL)
 
-        # SUB-SLIDE A: INFORMASI & SPESIFIKASI VISUAL
+        # SUB-SLIDE A
         slide_a = prs.slides.add_slide(blank_layout)
         set_slide_bg(slide_a, product_bg_url)
         add_modern_header(
             slide_a,
-            f"#{idx} {item.get('beverage_name')} [{item.get('origin_type')}] — 📌 SPESIFIKASI UTAMA",
+            f"#{idx} {item.get('beverage_name')} [{item.get('origin_type')}] —"
+            " 📌 SPESIFIKASI UTAMA",
         )
 
         img_card = slide_a.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.5), Inches(5.2), Inches(5.3)
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(0.8),
+            Inches(1.5),
+            Inches(5.2),
+            Inches(5.3),
         )
         img_card.fill.solid()
         img_card.fill.fore_color.rgb = theme["card_bg"]
         img_card.line.color.rgb = theme["border"]
 
-        img_url = item.get("image_url") or fetch_real_product_image(item.get("beverage_name", ""))
+        img_url = item.get("image_url") or fetch_real_product_image(
+            item.get("beverage_name", "")
+        )
         img_bytes = download_image_bytes(img_url) if img_url else None
 
         if img_bytes:
             try:
                 slide_a.shapes.add_picture(
-                    img_bytes, Inches(1.1), Inches(1.8), width=Inches(4.6), height=Inches(4.7)
+                    img_bytes,
+                    Inches(1.1),
+                    Inches(1.8),
+                    width=Inches(4.6),
+                    height=Inches(4.7),
                 )
             except Exception:
                 pass
 
         info_card = slide_a.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.3), Inches(1.5), Inches(6.2), Inches(5.3)
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(6.3),
+            Inches(1.5),
+            Inches(6.2),
+            Inches(5.3),
         )
         info_card.fill.solid()
         info_card.fill.fore_color.rgb = theme["card_bg"]
@@ -578,16 +644,21 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
         p_a2.font.size = Pt(12)
         p_a2.font.color.rgb = theme["text"]
 
-        # SUB-SLIDE B: BEHIND STORY, USP & BENCHMARKING
+        # SUB-SLIDE B
         slide_b = prs.slides.add_slide(blank_layout)
         set_slide_bg(slide_b, product_bg_url)
         add_modern_header(
             slide_b,
-            f"#{idx} {item.get('beverage_name')} — ⚔️ BENCHMARKING & BEHIND STORY",
+            f"#{idx} {item.get('beverage_name')} — ⚔️ BENCHMARKING & BEHIND"
+            " STORY",
         )
 
         card_b1 = slide_b.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.5), Inches(5.7), Inches(5.3)
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(0.8),
+            Inches(1.5),
+            Inches(5.7),
+            Inches(5.3),
         )
         card_b1.fill.solid()
         card_b1.fill.fore_color.rgb = theme["card_bg"]
@@ -615,7 +686,11 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
         pb1_body.font.color.rgb = theme["text"]
 
         card_b2 = slide_b.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.8), Inches(1.5), Inches(5.7), Inches(5.3)
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(6.8),
+            Inches(1.5),
+            Inches(5.7),
+            Inches(5.3),
         )
         card_b2.fill.solid()
         card_b2.fill.fore_color.rgb = theme["card_bg"]
@@ -636,35 +711,63 @@ def create_pptx_presentation(data_json: dict) -> io.BytesIO:
             comp_body_text += (
                 f"• {c.get('product_name')} [{c.get('origin_type')}]\n"
                 f"  Behind Story: {c.get('behind_story')}\n"
-                f"  ABV: {c.get('alcohol_by_volume')} | Harga: {c.get('price_point')}\n"
+                f"  ABV: {c.get('alcohol_by_volume')} | Harga:"
+                f" {c.get('price_point')}\n"
                 f"  Bedanya: {c.get('key_difference')}\n"
                 f"  Kelemahan: {c.get('product_weakness')}\n\n"
             )
 
         pb2_body = tf_b2.add_paragraph()
-        pb2_body.text = comp_body_text if comp_body_text else "Tidak ada data pembanding."
+        pb2_body.text = (
+            comp_body_text if comp_body_text else "Tidak ada data pembanding."
+        )
         pb2_body.font.size = Pt(10)
         pb2_body.font.color.rgb = theme["subtext"]
 
-        # SUB-SLIDE C: ANALISIS BISNIS HORECA (4 GRID CARD)
+        # SUB-SLIDE C
         slide_c = prs.slides.add_slide(blank_layout)
         set_slide_bg(slide_c, product_bg_url)
         add_modern_header(
             slide_c,
-            f"#{idx} {item.get('beverage_name')} — 💼 ANALISIS BISNIS & KOMERSIAL HORECA",
+            f"#{idx} {item.get('beverage_name')} — 💼 ANALISIS BISNIS &"
+            " KOMERSIAL HORECA",
         )
 
         biz = item.get("business_intelligence", {})
         biz_boxes = [
-            ("📈 Potensi Margin Profit", biz.get("markup_margin_potential"), Inches(0.8), Inches(1.5)),
-            ("👥 Target Konsumen", biz.get("target_demographics"), Inches(6.8), Inches(1.5)),
-            ("🏢 Venue Terbaik", biz.get("suitable_venue"), Inches(0.8), Inches(4.3)),
-            ("🔄 Potensi Investasi / Stok", biz.get("investment_value"), Inches(6.8), Inches(4.3)),
+            (
+                "📈 Potensi Margin Profit",
+                biz.get("markup_margin_potential"),
+                Inches(0.8),
+                Inches(1.5),
+            ),
+            (
+                "👥 Target Konsumen",
+                biz.get("target_demographics"),
+                Inches(6.8),
+                Inches(1.5),
+            ),
+            (
+                "🏢 Venue Terbaik",
+                biz.get("suitable_venue"),
+                Inches(0.8),
+                Inches(4.3),
+            ),
+            (
+                "🔄 Potensi Investasi / Stok",
+                biz.get("investment_value"),
+                Inches(6.8),
+                Inches(4.3),
+            ),
         ]
 
         for b_title, b_val, left_x, top_y in biz_boxes:
             b_shape = slide_c.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE, left_x, top_y, Inches(5.7), Inches(2.5)
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                left_x,
+                top_y,
+                Inches(5.7),
+                Inches(2.5),
             )
             b_shape.fill.solid()
             b_shape.fill.fore_color.rgb = theme["card_bg"]
@@ -698,13 +801,32 @@ st.set_page_config(
 )
 
 st.title("🍾 Global Beverage Business")
-st.write("Beverages Analysis, Sorting & Equivalent Product Benchmarking System Based on AI.")
-
-raw_api_key = st.sidebar.text_input(
-    "Masukkan Gemini API Key:",
-    type="password",
-    value=os.environ.get("GEMINI_API_KEY", ""),
+st.write(
+    "Beverages Analysis, Sorting & Equivalent Product Benchmarking System"
+    " Based on AI."
 )
+
+# DETEKSI AUTOMATIS KUNCI API
+# Mengambil dari Streamlit Secrets atau variabel lingkungan .env
+auto_api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get(
+    "GEMINI_API_KEY", ""
+)
+
+if auto_api_key:
+    st.sidebar.success("✅ API Key Terdeteksi Otomatis!")
+    raw_api_key = st.sidebar.text_input(
+        "Gemini API Key (Opsional / Override):",
+        type="password",
+        value=auto_api_key,
+    )
+else:
+    st.sidebar.warning("⚠️ API Key tidak terdeteksi di .env / Secrets")
+    raw_api_key = st.sidebar.text_input(
+        "Masukkan Gemini API Key:",
+        type="password",
+        value="",
+    )
+
 api_key = raw_api_key.strip()
 
 with st.form("form_analisis"):
@@ -723,6 +845,7 @@ with st.form("form_analisis"):
                 "🧊 Vodka",
                 "🌵 Tequila / Mezcal",
                 "🏴‍☠️ Rum",
+                "☠ Brandy",
             ],
         )
         origin_scope = st.selectbox(
@@ -734,7 +857,10 @@ with st.form("form_analisis"):
                 "⚔️ Komparasi Head-to-Head (Lokal vs Impor)",
             ],
         )
-        brand_input = st.text_input("🏷️ Brand / Product (Optional):", placeholder="Contoh: Kura Kura Beer / Jinro Fresh")
+        brand_input = st.text_input(
+            "🏷️ Brand / Product (Optional):",
+            placeholder="Contoh: Kura Kura Beer / Jinro Fresh",
+        )
         item_count = st.selectbox(
             "🔢 Sort By Range:",
             options=list(range(1, 16)),
@@ -772,16 +898,17 @@ with st.form("form_analisis"):
         )
         origin_input = st.text_input("🌍 Specific Of Origin (Optional):")
 
-    btn_process = st.form_submit_button(
-        "🔍 Punch Down", type="primary"
-    )
+    btn_process = st.form_submit_button("🔍 Punch Down", type="primary")
 
 # ==========================================
 # 5. EXECUTION & DISPLAY
 # ==========================================
 if btn_process:
     if not api_key:
-        st.error("❌ Masukkan Gemini API Key valid di sidebar!")
+        st.error(
+            "❌ API Key tidak terdeteksi. Silakan atur file .env atau masukkan"
+            " manual di sidebar!"
+        )
     else:
         c_bev = clean_text(beverage_type)
         c_scope = clean_text(origin_scope)
@@ -789,9 +916,20 @@ if btn_process:
         c_ven = clean_text(venue_type)
         c_bud = clean_text(budget_category)
 
-        prompt_query = f"Sortir {item_count} minuman: Kategori: {c_bev}, Scope Asal: {c_scope}, Brand/Acuan: {brand_input or 'Bebas'}, Prioritas: {c_prio}, Venue: {c_ven}, Budget: {c_bud}, Region: {origin_input or 'Bebas'}. Tentukan cerita singkat latar belakang pembuatan (behind_story), kelemahan produk (product_weakness), kriteria origin_type ('Lokal / Indonesia' atau 'Luar Negeri / Impor') serta kadar alkohol (% ABV) secara presisi."
+        prompt_query = (
+            f"Sortir {item_count} minuman: Kategori: {c_bev}, Scope Asal:"
+            f" {c_scope}, Brand/Acuan: {brand_input or 'Bebas'}, Prioritas:"
+            f" {c_prio}, Venue: {c_ven}, Budget: {c_bud}, Region:"
+            f" {origin_input or 'Bebas'}. Tentukan cerita singkat latar belakang"
+            " pembuatan (behind_story), kelemahan produk (product_weakness),"
+            " kriteria origin_type ('Lokal / Indonesia' atau 'Luar Negeri /"
+            " Impor') serta kadar alkohol (% ABV) secara presisi."
+        )
 
-        with st.spinner(f"📊 Menganalisis & mencari pembanding setara dari database global..."):
+        with st.spinner(
+            "📊 Menganalisis & mencari pembanding setara dari database"
+            " global..."
+        ):
             try:
                 client = genai.Client(api_key=api_key)
                 try:
@@ -819,7 +957,11 @@ if btn_process:
 
                 data = json.loads(response.text)
 
-                st.success(f"✅ Analisis & Benchmarking {len(data.get('selected_beverages', []))} Minuman Selesai!")
+                st.success(
+                    "✅ Analisis & Benchmarking"
+                    f" {len(data.get('selected_beverages', []))} Minuman"
+                    " Selesai!"
+                )
 
                 excel_buffer = create_excel_dashboard(data)
                 pptx_buffer = create_pptx_presentation(data)
@@ -832,7 +974,9 @@ if btn_process:
                         label="📊 Download Excel Dashboard (.xlsx)",
                         data=excel_buffer,
                         file_name="Executive_Beverage_Dashboard.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        mime=(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        ),
                         type="primary",
                         use_container_width=True,
                     )
@@ -842,7 +986,9 @@ if btn_process:
                         label="🖥️ Download PowerPoint Presentation (.pptx)",
                         data=pptx_buffer,
                         file_name="Executive_Beverage_Presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        mime=(
+                            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        ),
                         type="primary",
                         use_container_width=True,
                     )
@@ -855,11 +1001,19 @@ if btn_process:
                 # Tampilan UI Streamlit
                 for i, bev in enumerate(data["selected_beverages"], 1):
                     biz = bev["business_intelligence"]
-                    
-                    # Tagging Asal
-                    origin_tag = "🇮🇩 LOKAL" if "lokal" in bev.get('origin_type', '').lower() or "indonesia" in bev.get('origin_type', '').lower() else "🌍 IMPOR"
 
-                    st.markdown(f"### #{i} {bev['beverage_name']} ({bev['age_or_vintage']}) &nbsp; `{origin_tag}` &nbsp; 🧪 `{bev['alcohol_by_volume']}`")
+                    origin_tag = (
+                        "🇮🇩 LOKAL"
+                        if "lokal" in bev.get("origin_type", "").lower()
+                        or "indonesia" in bev.get("origin_type", "").lower()
+                        else "🌍 IMPOR"
+                    )
+
+                    st.markdown(
+                        f"### #{i} {bev['beverage_name']}"
+                        f" ({bev['age_or_vintage']}) &nbsp; `{origin_tag}`"
+                        f" &nbsp; 🧪 `{bev['alcohol_by_volume']}`"
+                    )
 
                     c1, c2, c3 = st.columns([1.5, 2, 2])
                     with c1:
@@ -887,20 +1041,30 @@ if btn_process:
                             f"**🏢 Venue:** {biz['suitable_venue']}"
                         )
 
-                    # Tampilan Produk Pembanding Setara
-                    st.markdown("#### ⚔️ Produk Pembanding & Benchmarking Setara")
+                    st.markdown(
+                        "#### ⚔️ Produk Pembanding & Benchmarking Setara"
+                    )
                     comps = bev.get("equivalent_competitors", [])
                     if comps:
                         comp_cols = st.columns(len(comps))
                         for idx_c, comp in enumerate(comps):
-                            comp_tag = "🇮🇩 LOKAL" if "lokal" in comp.get('origin_type', '').lower() or "indonesia" in comp.get('origin_type', '').lower() else "🌍 IMPOR"
+                            comp_tag = (
+                                "🇮🇩 LOKAL"
+                                if "lokal"
+                                in comp.get("origin_type", "").lower()
+                                or "indonesia"
+                                in comp.get("origin_type", "").lower()
+                                else "🌍 IMPOR"
+                            )
                             with comp_cols[idx_c]:
                                 st.info(
                                     f"**{comp['product_name']}** `{comp_tag}`\n\n"
-                                    f"📖 **Behind Story:** {comp['behind_story']}\n\n"
+                                    "📖 **Behind Story:**"
+                                    f" {comp['behind_story']}\n\n"
                                     f"🧪 **ABV:** `{comp['alcohol_by_volume']}`\n\n"
                                     f"📍 **Asal/Brand:** {comp['origin_brand']}\n\n"
-                                    f"🌾 **Bahan Baku:** {comp['base_ingredients']}\n\n"
+                                    "🌾 **Bahan Baku:**"
+                                    f" {comp['base_ingredients']}\n\n"
                                     f"💵 **Harga:** `{comp['price_point']}`\n\n"
                                     f"💡 **Bedanya:** {comp['key_difference']}\n\n"
                                     f"⚠️ **Kelemahan:** {comp['product_weakness']}"
