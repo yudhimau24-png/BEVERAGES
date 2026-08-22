@@ -1171,7 +1171,7 @@ else:
                 beverage_type = st.selectbox(
                     "🧃 Beverages Category:",
                     [
-                        "✨ Universal / Mix & Match Bebas (Campuran Terbaik)",
+                        "✨ Universal / Mix & Match ",
                         "🍹 Alco Pops / Ready To Drink ",
                         "🍷 Wine ",
                         "🥃 Whisky / Whiskey ",
@@ -1182,7 +1182,8 @@ else:
                         "🧊 Vodka ",
                         "🌵 Tequila / Mezcal ",
                         "🏴‍☠️ Rum ",
-                        "👑 Brandy "
+                        "👑 Brandy ",
+                        "🧃 Shochu"
                     ]
                 )
                 origin_scope = st.selectbox(
@@ -1195,7 +1196,7 @@ else:
                     ]
                 )
                 brand_input = st.text_input("🏷️ Brand / Product (Optional):", placeholder="Contoh: ")
-                item_count = st.selectbox("🔢 Jumlah Produk Yg Mau Dilihat:", options=list(range(1, 16)), index=2)
+                item_count = st.selectbox("🔢 Sort By Range:", options=list(range(1, 16)), index=2)
             with col2:
                 sort_priority = st.selectbox(
                     "🎯 Main Priority:",
