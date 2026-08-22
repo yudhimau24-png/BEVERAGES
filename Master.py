@@ -206,19 +206,33 @@ def run_selenium_bpom_robot(keyword: str):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--remote-debugging-port=9222")
 
         # Deteksi lokasi Chromium bawaan Linux Streamlit Cloud
-        if os.path.exists("/usr/bin/chromium"):
-            options.binary_location = "/usr/bin/chromium"
-        elif os.path.exists("/usr/bin/chromium-browser"):
-            options.binary_location = "/usr/bin/chromium-browser"
+        chrome_bin = None
+        for path in ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]:
+            if os.path.exists(path):
+                chrome_bin = path
+                break
 
-        # Deteksi ChromeDriver bawaan Linux Streamlit Cloud vs Environment Lokal
-        if os.path.exists("/usr/bin/chromedriver"):
-            service = Service("/usr/bin/chromedriver")
+        # Deteksi ChromeDriver bawaan Linux Streamlit Cloud
+        driver_bin = None
+        for path in ["/usr/bin/chromedriver", "/usr/lib/chromium-browser/chromedriver"]:
+            if os.path.exists(path):
+                driver_bin = path
+                break
+
+        # Inisialisasi Driver Berdasarkan OS
+        if chrome_bin and driver_bin:
+            options.binary_location = chrome_bin
+            service = Service(driver_bin)
             driver = webdriver.Chrome(service=service, options=options)
-        else:
+        elif os.name == 'nt' or sys.platform == 'darwin':
+            # Environment Komputer Lokal (Windows / Mac)
             driver = webdriver.Chrome(options=options)
+        else:
+            # Server Linux tanpa Chromium terinstall
+            return False, None, "⚠️ Paket Linux belum terpasang! Pastikan file 'packages.txt' berisi 'chromium' dan 'chromium-driver' ada di GitHub, lalu Reboot App di Dashboard Streamlit Cloud."
 
         wait = WebDriverWait(driver, 15)
 
