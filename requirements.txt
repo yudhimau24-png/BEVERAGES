@@ -1,0 +1,10 @@
+streamlit
+pandas
+selenium
+openpyxl
+python-pptx
+google-genai
+Pillow
+pydantic
+requests
+python-dotenv
