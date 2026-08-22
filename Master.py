@@ -53,6 +53,70 @@ except ImportError:
 
 
 # ==============================================================================
+# FUNGSI EXPORT EXCEL STYLED KHUSUS BPOM (Sesuai Layout Gambar)
+# ==============================================================================
+def export_bpom_styled_excel(df_in: pd.DataFrame) -> bytes:
+    output = io.BytesIO()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Data_BPOM"
+    ws.views.sheetView[0].showGridLines = True
+
+    # Styling Header Persis Gambar (Biru Tua + Teks Putih Bold)
+    header_fill = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    
+    # Border Tipis
+    thin_border = Border(
+        left=Side(style="thin", color="D9D9D9"),
+        right=Side(style="thin", color="D9D9D9"),
+        top=Side(style="thin", color="D9D9D9"),
+        bottom=Side(style="thin", color="D9D9D9")
+    )
+
+    # Warna Selang-Seling (Baris Genap)
+    alt_fill = PatternFill(start_color="F2F5F9", end_color="F2F5F9", fill_type="solid")
+
+    # Write Headers
+    headers = list(df_in.columns)
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=str(header))
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = thin_border
+
+    # Write Data Rows
+    for row_idx, row_data in enumerate(df_in.values, 2):
+        is_even = (row_idx % 2 == 0)
+        for col_idx, val in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=str(val) if pd.notna(val) else "")
+            cell.border = thin_border
+            cell.font = Font(name="Calibri", size=10)
+            if is_even:
+                cell.fill = alt_fill
+            
+            # Rata tengah untuk 'Tipe', Rata kiri untuk sisanya
+            if col_idx == 1:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    # Set Tinggi Header
+    ws.row_dimensions[1].height = 25
+
+    # Auto-fit Lebar Kolom
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = min(max(max_len + 4, 15), 50)
+
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
+
+
+# ==============================================================================
 # 0. DATABASE & LOCAL BPOM INGESTION SYSTEM (SQLITE)
 # ==============================================================================
 DB_FILE = "app_users.db"
@@ -332,14 +396,14 @@ def run_selenium_bpom_robot(keyword: str):
             df_hasil = pd.DataFrame(all_collected_data)
             num_cols = len(df_hasil.columns)
             
-            # TAMPILKAN SELURUH 4 KOLOM UTUH TERMASUK PENDAFTAR
+            # HEADER SESUAI GAMBAR DENGAN 4 KOLOM UTUH
             if num_cols >= 4:
                 df_hasil = df_hasil.iloc[:, :4]
-                df_hasil.columns = [1, 2, 3, 4]
+                df_hasil.columns = ["Tipe", "No Registrasi", "Produk", "Pendaftar"]
             elif num_cols == 3:
-                df_hasil.columns = [1, 2, 3]
+                df_hasil.columns = ["Tipe", "No Registrasi", "Produk"]
             elif num_cols == 2:
-                df_hasil.columns = [1, 2]
+                df_hasil.columns = ["Tipe", "No Registrasi"]
 
             return True, df_hasil, f"🎉 Berhasil mengambil TOTAL {len(df_hasil)} produk langsung dari CekBPOM untuk '{keyword}'!"
 
@@ -1293,6 +1357,29 @@ else:
 
             st.dataframe(preview_df, use_container_width=True)
 
+            # Tombol Download Preview (CSV & Excel Styled Sesuai Gambar)
+            col_pdl1, col_pdl2 = st.columns(2)
+            with col_pdl1:
+                csv_prev = preview_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Preview Data (CSV)",
+                    data=csv_prev,
+                    file_name=f"preview_bpom_{kw_prev}.csv",
+                    mime="text/csv",
+                    key="dl_preview_csv"
+                )
+            with col_pdl2:
+                excel_p_styled = export_bpom_styled_excel(preview_df)
+                st.download_button(
+                    label="📊 Download Preview Data (Excel)",
+                    data=excel_p_styled,
+                    file_name=f"preview_bpom_{kw_prev}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_preview_excel"
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
             col_p1, col_p2 = st.columns([2, 1])
             with col_p1:
                 if st.button("💾 Simpan Data Ini ke Database SQLite", type="primary", key="btn_save_preview_data"):
@@ -1341,7 +1428,7 @@ else:
                         elif status_code == "SQLITE_LOCAL":
                             st.info(f"⚡ Menampilkan seluruh varian '{clean_kw.upper()}' ({len(bpom_records)} Record) langsung dari Database Bulk Ingestion / SQLite Lokal (100% Akurat).")
 
-                        # FORMAT DATAFRAME PRESISI DENGAN 4 KOLOM UTUH TERMASUK PENDAFTAR
+                        # FORMAT DATAFRAME PRESISI SESUAI JUDUL KOLOM DI GAMBAR (Tipe | No Registrasi | Produk | Pendaftar)
                         table_data = []
                         for rec in bpom_records:
                             no_reg = rec.get('nomor_registrasi', '') or ''
@@ -1369,14 +1456,35 @@ else:
                                     col4_str += f" {lokasi}"
 
                             table_data.append({
-                                1: rec.get('tipe', 'PO'),
-                                2: col2_str,
-                                3: col3_str,
-                                4: col4_str
+                                "Tipe": rec.get('tipe', 'PO'),
+                                "No Registrasi": col2_str,
+                                "Produk": col3_str,
+                                "Pendaftar": col4_str
                             })
 
                         df_result_display = pd.DataFrame(table_data)
                         st.dataframe(df_result_display, use_container_width=True)
+
+                        # Tombol Download Data Hasil Pencarian (CSV & Excel Styled Sesuai Gambar)
+                        col_dl1, col_dl2 = st.columns(2)
+                        with col_dl1:
+                            csv_search = df_result_display.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                label="📥 Download Data BPOM (CSV)",
+                                data=csv_search,
+                                file_name=f"data_bpom_{clean_kw}.csv",
+                                mime="text/csv",
+                                key="dl_search_csv"
+                            )
+                        with col_dl2:
+                            excel_search_styled = export_bpom_styled_excel(df_result_display)
+                            st.download_button(
+                                label="📊 Download Data BPOM (Excel)",
+                                data=excel_search_styled,
+                                file_name=f"data_bpom_{clean_kw}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                key="dl_search_excel"
+                            )
 
         if btn_do_selenium:
             if not target_brand_name.strip():
@@ -1547,4 +1655,3 @@ else:
                         st.rerun()
             else:
                 st.info("Tidak ada pengguna lain selain admin utama.")
-
