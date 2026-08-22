@@ -1326,7 +1326,7 @@ else:
 
     # TAB 2: HYBRID AUTO-FETCH & AUTO-SAVE CEKBPOM SYSTEM
     with tab_scan:
-        st.markdown("### 🔍 Search Database CekBPOM RI (Hybrid Auto-Fetch)")
+        st.markdown("### 🔍 Search Database BPOM (Hybrid Auto)")
         st.caption("Verifikasi Resmi Database CekBPOM: Cek SQLite -> AI Auto-Fetch -> Auto-Save ke Database Lokal")
 
         col_input1, col_input2 = st.columns([3, 1])
