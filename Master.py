@@ -1093,7 +1093,11 @@ if not st.session_state["logged_in"]:
             if st.button("📝 REGISTRASI AKUN", type="primary", use_container_width=True):
                 if reg_name and reg_email and reg_user and reg_pass:
                     ok, msg = register_user(reg_name, reg_email, "", "", reg_user.strip(), reg_pass.strip())
-                    st.success(msg) if ok else st.error(msg)
+                    # PERBAIKAN: Memecah statement menjadi baris terpisah agar tidak memunculkan object DeltaGenerator
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
 
 else:
     curr_user = get_user_data(st.session_state["username"])
@@ -1171,7 +1175,7 @@ else:
                 beverage_type = st.selectbox(
                     "🧃 Beverages Category:",
                     [
-                        "✨ Universal / Mix & Match ",
+                        "✨ Universal / Mix & Match Bebas (Campuran Terbaik)",
                         "🍹 Alco Pops / Ready To Drink ",
                         "🍷 Wine ",
                         "🥃 Whisky / Whiskey ",
@@ -1182,8 +1186,7 @@ else:
                         "🧊 Vodka ",
                         "🌵 Tequila / Mezcal ",
                         "🏴‍☠️ Rum ",
-                        "👑 Brandy ",
-                        "🧃 Shochu"
+                        "👑 Brandy "
                     ]
                 )
                 origin_scope = st.selectbox(
@@ -1196,7 +1199,7 @@ else:
                     ]
                 )
                 brand_input = st.text_input("🏷️ Brand / Product (Optional):", placeholder="Contoh: ")
-                item_count = st.selectbox("🔢 Sort By Range:", options=list(range(1, 16)), index=2)
+                item_count = st.selectbox("🔢 Jumlah Produk Yg Mau Dilihat:", options=list(range(1, 16)), index=2)
             with col2:
                 sort_priority = st.selectbox(
                     "🎯 Main Priority:",
