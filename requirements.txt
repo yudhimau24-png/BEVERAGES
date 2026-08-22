@@ -1,6 +1,0 @@
-streamlit
-google-genai
-pandas
-openpyxl
-python-pptx
-pydantic
