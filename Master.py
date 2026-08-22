@@ -192,10 +192,10 @@ def delete_user_from_db(username):
 
 
 # ==============================================================================
-# INTEGRASI SELENIUM AUTOMATION SCRAPER (STREAMLIT CLOUD & LOKAL COMPATIBLE)
+# INTEGRASI SELENIUM AUTOMATION SCRAPER (MENAMPIKLAN LENGKAP DENGAN PENDAFTAR)
 # ==============================================================================
 def run_selenium_bpom_robot(keyword: str):
-    """Menyedot SELURUH data produk, merk, maupun Pendaftar/Sarana dari web BPOM Online"""
+    """Menyedot SELURUH data produk CekBPOM RI termasuk kolom Pendaftar"""
     if not SELENIUM_AVAILABLE:
         return False, None, "Package Selenium belum terinstall di server!"
         
@@ -206,44 +206,66 @@ def run_selenium_bpom_robot(keyword: str):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--remote-debugging-port=9222")
 
-        # Deteksi lokasi Chromium bawaan Linux Streamlit Cloud
+        # Deteksi Chromium Linux Streamlit Cloud
         chrome_bin = None
         for path in ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]:
             if os.path.exists(path):
                 chrome_bin = path
                 break
 
-        # Deteksi ChromeDriver bawaan Linux Streamlit Cloud
+        # Deteksi ChromeDriver Linux Streamlit Cloud
         driver_bin = None
-        for path in ["/usr/bin/chromedriver", "/usr/lib/chromium-browser/chromedriver"]:
+        for path in ["/usr/bin/chromedriver", "/usr/lib/chromium-browser/chromedriver", "/usr/lib/chromium/chromedriver"]:
             if os.path.exists(path):
                 driver_bin = path
                 break
 
-        # Inisialisasi Driver Berdasarkan OS
-        if chrome_bin and driver_bin:
+        if chrome_bin:
             options.binary_location = chrome_bin
-            service = Service(driver_bin)
-            driver = webdriver.Chrome(service=service, options=options)
-        elif os.name == 'nt' or sys.platform == 'darwin':
-            # Environment Komputer Lokal (Windows / Mac)
-            driver = webdriver.Chrome(options=options)
-        else:
-            # Server Linux tanpa Chromium terinstall
-            return False, None, "⚠️ Paket Linux belum terpasang! Pastikan file 'packages.txt' berisi 'chromium' dan 'chromium-driver' ada di GitHub, lalu Reboot App di Dashboard Streamlit Cloud."
 
+        # Inisialisasi Driver
+        try:
+            if driver_bin:
+                service = Service(driver_bin)
+                driver = webdriver.Chrome(service=service, options=options)
+            else:
+                driver = webdriver.Chrome(options=options)
+        except Exception as e_driver:
+            return False, None, f"⚠️ Paket Linux belum terpasang di Streamlit Cloud!\n\nDetail Error: {str(e_driver)}"
+
+        driver.get("https://cekbpom.pom.go.id/")
         wait = WebDriverWait(driver, 15)
 
+        input_box = wait.until(
+            EC.presence_of_element_located((
+                By.CSS_SELECTOR,
+                "input[placeholder*='Cari'], input[type='search'], input[type='text']"
+            ))
+        )
+        input_box.clear()
+        input_box.send_keys(keyword)
+        input_box.send_keys(Keys.ENTER)
+
+        time.sleep(3.5)
+
+        # OTOMATIS MENGUBAH TAMPILAN SHOW ENTRIES KE 100 ATAU MAKSIMAL
+        try:
+            select_elems = driver.find_elements(By.CSS_SELECTOR, "select[name*='length'], select[name*='table'], select")
+            for sel_elem in select_elems:
+                try:
+                    s_obj = Select(sel_elem)
+                    for opt in s_obj.options:
+                        if opt.text.strip() in ['100', '50', '25']:
+                            s_obj.select_by_visible_text(opt.text)
+                            time.sleep(2)
+                            break
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         all_collected_data = []
-
-        daftar_kategori = [
-            ("PANGAN OLAHAN", "//a[contains(., 'Pangan Olahan')] | //span[contains(., 'Pangan Olahan')] | //*[contains(text(), 'Pangan Olahan')]"),
-            ("PRODUK", "//a[contains(., 'Produk')] | //span[contains(., 'Produk')]"),
-            ("SARANA", "//a[contains(., 'Sarana')] | //span[contains(., 'Sarana')]"),
-        ]
-
         js_extract = """
             var data = [];
             var rows = document.querySelectorAll('tbody tr');
@@ -259,90 +281,50 @@ def run_selenium_bpom_robot(keyword: str):
             return data;
         """
 
-        for idx, (nama_kategori, xpath_menu) in enumerate(daftar_kategori):
-            if idx > 0:
-                try:
-                    menu_btn = driver.find_element(By.XPATH, xpath_menu)
-                    driver.execute_script("arguments[0].click();", menu_btn)
-                    time.sleep(2.5)
-                except Exception:
-                    pass
+        # Logika Paginasi Menyisir Seluruh Halaman Tanpa Terpotong
+        page = 1
+        while True:
+            rows = driver.execute_script(js_extract)
+            if rows:
+                for r in rows:
+                    if r not in all_collected_data:
+                        all_collected_data.append(r)
 
-            search_types = ["Pendaftar", "Merk", "Produk", "Sarana"]
-            for s_type in search_types:
-                try:
-                    try:
-                        filter_btn = wait.until(
-                            EC.element_to_be_clickable((
-                                By.XPATH,
-                                "//button[contains(text(), 'Filter')] | //a[contains(text(), 'Filter')] | //*[contains(@class, 'filter')]"
-                            ))
-                        )
-                        driver.execute_script("arguments[0].click();", filter_btn)
-                        time.sleep(1)
-                    except Exception:
-                        pass
+            next_btns = driver.find_elements(
+                By.XPATH,
+                "//li[contains(@class, 'next') and not(contains(@class, 'disabled'))]/a | "
+                "//a[contains(@class, 'next') and not(contains(@class, 'disabled'))] | "
+                "//a[contains(text(), 'Selanjutnya')] | "
+                "//button[contains(text(), 'Selanjutnya')]"
+            )
+            if not next_btns:
+                break
 
-                    select_elements = driver.find_elements(By.TAG_NAME, "select")
-                    for sel_elem in select_elements:
-                        try:
-                            select_obj = Select(sel_elem)
-                            for opt in select_obj.options:
-                                if s_type.lower() in opt.text.lower():
-                                    select_obj.select_by_visible_text(opt.text)
-                                    time.sleep(0.5)
-                                    break
-                        except Exception:
-                            pass
+            next_btn = next_btns[0]
+            parent_class = next_btn.find_element(By.XPATH, "..").get_attribute("class") or ""
+            btn_class = next_btn.get_attribute("class") or ""
 
-                    input_box = wait.until(
-                        EC.presence_of_element_located((
-                            By.CSS_SELECTOR,
-                            "input[placeholder*='Cari'], input[type='search'], input[type='text']"
-                        ))
-                    )
-                    input_box.clear()
-                    input_box.send_keys(keyword)
-                    input_box.send_keys(Keys.ENTER)
+            if "disabled" in parent_class.lower() or "disabled" in btn_class.lower() or next_btn.get_attribute("disabled") is not None:
+                break
 
-                    time.sleep(3.5)
+            prev_len = len(all_collected_data)
+            driver.execute_script("arguments[0].click();", next_btn)
+            time.sleep(2.5)
 
-                    page = 1
-                    while True:
-                        rows = driver.execute_script(js_extract)
-                        if rows:
-                            for r in rows:
-                                if r not in all_collected_data:
-                                    all_collected_data.append(r)
+            new_rows = driver.execute_script(js_extract)
+            added_new = False
+            if new_rows:
+                for nr in new_rows:
+                    if nr not in all_collected_data:
+                        all_collected_data.append(nr)
+                        added_new = True
 
-                        next_btns = driver.find_elements(By.XPATH, "//a[contains(text(), 'Selanjutnya')] | //button[contains(text(), 'Selanjutnya')] | //li[contains(@class, 'next') and not(contains(@class, 'disabled'))]/a")
-                        if not next_btns:
-                            break
+            if not added_new and page > 1:
+                break
 
-                        next_btn = next_btns[0]
-                        parent_class = next_btn.find_element(By.XPATH, "..").get_attribute("class") or ""
-                        btn_class = next_btn.get_attribute("class") or ""
-
-                        if "disabled" in parent_class.lower() or "disabled" in btn_class.lower() or next_btn.get_attribute("disabled") is not None:
-                            break
-
-                        old_first = rows[0][0] if rows else ""
-                        driver.execute_script("arguments[0].click();", next_btn)
-                        time.sleep(2.5)
-
-                        new_rows = driver.execute_script(js_extract)
-                        new_first = new_rows[0][0] if new_rows else ""
-                        if old_first == new_first:
-                            break
-
-                        page += 1
-                        if page > 20:
-                            break
-
-                    if all_collected_data:
-                        break
-                except Exception:
-                    continue
+            page += 1
+            if page > 50:
+                break
 
         driver.quit()
 
@@ -350,16 +332,18 @@ def run_selenium_bpom_robot(keyword: str):
             df_hasil = pd.DataFrame(all_collected_data)
             num_cols = len(df_hasil.columns)
             
-            if num_cols == 4:
-                df_hasil.columns = ['Tipe', 'Nomor Registrasi', 'Nama Produk (Merk)', 'Pendaftar / Sarana']
+            # TAMPILKAN SELURUH 4 KOLOM UTUH TERMASUK PENDAFTAR
+            if num_cols >= 4:
+                df_hasil = df_hasil.iloc[:, :4]
+                df_hasil.columns = [1, 2, 3, 4]
             elif num_cols == 3:
-                df_hasil.columns = ['Nomor Registrasi', 'Nama Produk (Merk)', 'Pendaftar / Sarana']
-            else:
-                df_hasil.columns = [f"Kolom {i+1}" for i in range(num_cols)]
+                df_hasil.columns = [1, 2, 3]
+            elif num_cols == 2:
+                df_hasil.columns = [1, 2]
 
-            return True, df_hasil, f"🎉 Berhasil mengambil TOTAL {len(df_hasil)} data produk & sarana/pendaftar untuk '{keyword}'!"
+            return True, df_hasil, f"🎉 Berhasil mengambil TOTAL {len(df_hasil)} produk langsung dari CekBPOM untuk '{keyword}'!"
 
-        return False, None, f"Data '{keyword}' tidak ditemukan di Pangan Olahan, Produk, maupun Sarana."
+        return False, None, f"Data '{keyword}' tidak ditemukan di CekBPOM RI."
 
     except Exception as e:
         try: driver.quit()
@@ -510,7 +494,7 @@ def ingest_bpom_dataframe(df: pd.DataFrame):
     save_fetched_records_to_sqlite(records)
     return True, f"🎉 Berhasil mengekstrak & menyimpan {len(records)} record BPOM ke database lokal!"
 
-def search_bpom_sqlite_hybrid(raw_keyword: str, filter_tipe: str = "Semua", api_key: str = "", limit: int = 200):
+def search_bpom_sqlite_hybrid(raw_keyword: str, filter_tipe: str = "Semua", api_key: str = "", limit: int = 1000):
     clean_kw_str = clean_search_keyword(raw_keyword)
     words = [w.strip().lower() for w in clean_kw_str.split() if len(w.strip()) > 0]
     
@@ -1062,8 +1046,8 @@ else:
         
         with st.sidebar.expander("💳 Upgrade ke Unlimited Tier"):
             st.write("Dapatkan akses analisis tanpa batas dengan upgrade akun Anda.")
-            st.markdown("💰 **Biaya:** Rp 50.000 / Bulan")
-            st.markdown("💳 **Transfer:** BCA `123-456-7890` a.n Sommelier Pro")
+            st.markdown("💰 **Biaya:** Rp 30.000 / Bulan")
+            st.markdown("💳 **Transfer:** BCA `123-456-7890` a.n Yudhi Maulana")
             if st.button("⚡ Simulasikan Pembayaran Berhasil", type="primary", key="sim_pay_btn"):
                 update_user_role(curr_user['username'], 'unlimited')
                 st.success("🎉 Pembayaran Dikonfirmasi! Akun Anda kini UNLIMITED!")
@@ -1283,7 +1267,7 @@ else:
         with col_input2:
             filter_tipe_bpom = st.selectbox("Filter Tipe BPOM:", ["Semua", "PO", "KO", "TR"], index=0)
 
-        scan_limit = st.number_input("Batas Tampilan Record:", min_value=1, max_value=200, value=200, key="scan_limit_key")
+        scan_limit = st.number_input("Batas Tampilan Record:", min_value=1, max_value=5000, value=1000, key="scan_limit_key")
         
         col_act1, col_act2 = st.columns([2, 1])
         with col_act1:
@@ -1357,41 +1341,38 @@ else:
                         elif status_code == "SQLITE_LOCAL":
                             st.info(f"⚡ Menampilkan seluruh varian '{clean_kw.upper()}' ({len(bpom_records)} Record) langsung dari Database Bulk Ingestion / SQLite Lokal (100% Akurat).")
 
-                        # FORMAT DATAFRAME AMAN & PRESISI
+                        # FORMAT DATAFRAME PRESISI DENGAN 4 KOLOM UTUH TERMASUK PENDAFTAR
                         table_data = []
                         for rec in bpom_records:
-                            # 1. Nomor Registrasi & Tanggal
                             no_reg = rec.get('nomor_registrasi', '') or ''
                             tgl = rec.get('tanggal_terbit', '') or ''
                             if tgl and tgl not in ['N/A', 'nan', 'None', '']:
-                                col_reg = f"{no_reg} Terbit: {tgl}" if "terbit:" not in no_reg.lower() else no_reg
+                                col2_str = f"{no_reg} Terbit: {tgl}" if "terbit:" not in no_reg.lower() else no_reg
                             else:
-                                col_reg = no_reg
+                                col2_str = no_reg
 
-                            # 2. Nama Produk, Merk & Kemasan
                             prod = rec.get('nama_produk', '') or ''
                             merk = rec.get('merk', '') or ''
                             kemasan = rec.get('kemasan', '') or ''
 
-                            col_prod = prod
-                            if merk and merk not in ['N/A', 'NAN', 'NONE', ''] and 'merk:' not in col_prod.lower():
-                                col_prod += f" Merk: {merk}"
-                            if kemasan and kemasan not in ['N/A', 'nan', 'none', ''] and 'kemasan:' not in col_prod.lower():
-                                col_prod += f" Kemasan: {kemasan}"
+                            col3_str = prod
+                            if merk and merk not in ['N/A', 'NAN', 'NONE', ''] and 'merk:' not in col3_str.lower():
+                                col3_str += f" Merk: {merk}"
+                            if kemasan and kemasan not in ['N/A', 'nan', 'none', ''] and 'kemasan:' not in col3_str.lower():
+                                col3_str += f" Kemasan: {kemasan}"
 
-                            # 3. Pendaftar & Lokasi
                             pend = rec.get('pendaftar', '') or ''
                             lokasi = rec.get('lokasi', '') or ''
-                            col_pend = pend
+                            col4_str = pend
                             if lokasi and lokasi not in ['N/A', 'Indonesia', 'nan', 'none', '']:
-                                if lokasi.lower() not in col_pend.lower():
-                                    col_pend += f" {lokasi}"
+                                if lokasi.lower() not in col4_str.lower():
+                                    col4_str += f" {lokasi}"
 
                             table_data.append({
-                                "Tipe": rec.get('tipe', 'PO'),
-                                "Nomor Registrasi": col_reg,
-                                "Nama Produk (Merk)": col_prod,
-                                "Pendaftar / Sarana": col_pend
+                                1: rec.get('tipe', 'PO'),
+                                2: col2_str,
+                                3: col3_str,
+                                4: col4_str
                             })
 
                         df_result_display = pd.DataFrame(table_data)
@@ -1566,3 +1547,4 @@ else:
                         st.rerun()
             else:
                 st.info("Tidak ada pengguna lain selain admin utama.")
+
