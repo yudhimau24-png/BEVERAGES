@@ -1231,12 +1231,12 @@ else:
                         client = genai.Client(api_key=api_key)
                         try:
                             res = client.models.generate_content(
-                                model="gemini-2.5-flash", contents=prompt_query,
+                                model="gemini-3.6-flash", contents=prompt_query,
                                 config=types.GenerateContentConfig(system_instruction=SYSTEM_INSTRUCTION, temperature=0.1, response_mime_type="application/json", response_schema=SelectorResponse)
                             )
                         except Exception:
                             res = client.models.generate_content(
-                                model="gemini-2.5-flash", contents=prompt_query,
+                                model="gemini-3.5-flash-lite", contents=prompt_query,
                                 config=types.GenerateContentConfig(system_instruction=SYSTEM_INSTRUCTION, temperature=0.1, response_mime_type="application/json", response_schema=SelectorResponse)
                             )
 
