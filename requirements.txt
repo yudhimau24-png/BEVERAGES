@@ -1,10 +1,10 @@
 streamlit
+google-genai
 pandas
-selenium
 openpyxl
 python-pptx
-google-genai
-Pillow
+pillow
 pydantic
 requests
+selenium
 python-dotenv
